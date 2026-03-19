@@ -1,0 +1,4 @@
+.env
+myenv
+docs/
+faiss_index/
