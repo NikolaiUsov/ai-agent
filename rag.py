@@ -5,19 +5,31 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from pathlib import Path
 from langchain_community.vectorstores import FAISS
 
-# Путь к базе знаний 
+# CONFIG
 BASE_DIR = Path(__file__).resolve().parent
-KNOWLEDGE_DIR = str(BASE_DIR / "docs" / "knowledge_sources")
-
-# Путь к хранилищу индексов 
+KNOWLEDGE_DIR = str(BASE_DIR / "docs" / "knowledge_sources") 
 faiss_index_path = str(BASE_DIR / "faiss_index")
+chunk_size=500
+chunk_overlap=100
+separators=["\n\n", "\n", ". ", " "]
+
+embeddings_model = HuggingFaceEmbeddings(
+    model_name="BAAI/bge-m3",
+    model_kwargs={'device': 'cpu'},
+    encode_kwargs={'normalize_embeddings': True}
+)
+print("✅ Модель загружена!")
+# Смотрим размерность эмбеддингов модели
+test_embedding = embeddings_model.embed_query("проверка размерности")
+print(f"📏 Размерность: {len(test_embedding)}")
+
 
 # Разделение текста
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=500,
-    chunk_overlap=100,
+    chunk_size=chunk_size,
+    chunk_overlap=chunk_overlap,
     length_function=len,
-    separators=["\n\n", "\n", ". ", " "]
+    separators=separators
 )
 
 # Проверяем наличие папки
@@ -49,21 +61,6 @@ if not docs:
         "Нет загруженных документов для построения индекса. "
         "Проверьте, что в 'docs/knowledge_sources' есть PDF-файлы."
     )
-
-
-
-# Инициализация модели эмбеддингов
-embeddings_model = HuggingFaceEmbeddings(
-    model_name="BAAI/bge-m3",
-    model_kwargs={'device': 'cpu'},
-    encode_kwargs={'normalize_embeddings': True}
-)
-print("✅ Модель загружена!")
-# Смотрим размерность эмбеддингов модели
-test_embedding = embeddings_model.embed_query("проверка размерности")
-print(f"📏 Размерность: {len(test_embedding)}")
-
-
 
 # Проверяем, существует ли папка с индексом и есть ли в ней файлы
 if os.path.exists(faiss_index_path) and os.path.isfile(os.path.join(faiss_index_path, "index.faiss")):
