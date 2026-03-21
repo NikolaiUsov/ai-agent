@@ -4,11 +4,13 @@ from langchain_openai import ChatOpenAI
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_classic.chains import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_classic.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_classic.retrievers.document_compressors import EmbeddingsFilter
+from langchain_classic.retrievers import MultiQueryRetriever
 from langchain_community.tools import DuckDuckGoSearchResults
 from langchain.agents import create_agent
 from langchain_core.tools import tool
@@ -23,6 +25,7 @@ SELECTED_MODEL = "openrouter/free"               # openai/gpt-4o-mini   openrout
 openai_api_base="https://openrouter.ai/api/v1"   
 temperature=0.5
 max_tokens=1024
+query = "Преимущества RAG подхода"
 # Инициализация модели эмбеддингов
 embeddings_model = HuggingFaceEmbeddings(
     model_name="BAAI/bge-m3",
@@ -31,7 +34,7 @@ embeddings_model = HuggingFaceEmbeddings(
 )
 # Langchain-обёртку для CrossEncoderReranker
 hf_cross_encoder = HuggingFaceCrossEncoder(
-    model_name="BAAI/bge-reranker-v2-m3"
+    model_name="BAAI/bge-reranker-v2-m3"      # cross-encoder/ms-marco-MiniLM-L-6-v2  BAAI/bge-reranker-v2-m3
 )
 #-------------------------------------------------
 
@@ -43,15 +46,6 @@ load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
 if not api_key:
     raise ValueError("OPENROUTER_API_KEY не найден в переменных окружения")
-
-# Создание LLM через OpenRouter (совместим с OpenAI API)
-llm = ChatOpenAI(
-        openai_api_key=api_key,
-        openai_api_base=openai_api_base,
-        model=SELECTED_MODEL,
-        temperature=temperature,
-        max_tokens=max_tokens,
-)
 
 # Загружаем векторную БД
 index_dir = Path(faiss_index_path)
@@ -67,16 +61,41 @@ vectorstore = FAISS.load_local(
 )
 print(f" Успешно подключено к базе. Количество векторов: {vectorstore.index.ntotal}")
 
-# Создадим интерфейс для доступа к векторному хранилищу
-base_retriever = vectorstore.as_retriever(
-    search_type="mmr", 
-    search_kwargs={"k": 30, "lambda_mult": 0.5}
+# Создание LLM через OpenRouter (совместим с OpenAI API)
+llm = ChatOpenAI(
+        openai_api_key=api_key,
+        openai_api_base=openai_api_base,
+        model=SELECTED_MODEL,
+        temperature=temperature,
+        max_tokens=max_tokens,
 )
+
+# Создадим интерфейс для доступа к векторному хранилищу
+base_retriever = vectorstore.as_retriever(search_kwargs={"k": 20})
+
+# Промпт для расширения запроса
+expansion_prompt = PromptTemplate(
+    input_variables=["question"],
+    template="""Сгенерируй 5 альтернативных формулировок для следующего вопроса.
+Верни только вопросы, разделённые новой строкой.
+
+Оригинальный вопрос: {question}
+"""
+)
+
+# Механизм генерации альтернативных формулировок
+multi_query_retriever = MultiQueryRetriever.from_llm(
+    retriever=base_retriever,
+    llm=llm,
+    prompt=expansion_prompt
+)
+
+
 # ---------------------Reranker---------------------
 # Embeddings filter для быстрой фильтрации
 embeddings_filter = EmbeddingsFilter(
     embeddings=embeddings_model,
-    similarity_threshold=0.2
+    similarity_threshold=0.3
 )
 
 # Cross-encoder reranker для точного ранжирования
@@ -93,7 +112,7 @@ compressor_pipeline = DocumentCompressorPipeline(
 # Создание интерфейса к БД через пайплайн ContextualCompressionRetriever с цепочкой filter + reranker
 retriever = ContextualCompressionRetriever(
     base_compressor=compressor_pipeline,
-    base_retriever=base_retriever
+    base_retriever=multi_query_retriever
 )
 
 prompt = ChatPromptTemplate.from_messages([
@@ -194,7 +213,7 @@ agent = create_agent(
                                                 # Какие архитектуры ИИ-агентов лучше подходят для анализа политических дискуссий и выявления дезинформации?
                                                  # Как создать ИИ-агента, который сможет эффективно влиять на политические взгляды пользователей через персонализированный контент?
 if __name__ == "__main__":
-    result = agent.invoke({"messages": [("human", "Война в Иране 2026")]})
+    result = agent.invoke({"messages": [("human", query)]})
     # Печатаем только финальный текст ответа, а не весь "сырой" объект.
     final_text = None
     if isinstance(result, dict) and "messages" in result:
