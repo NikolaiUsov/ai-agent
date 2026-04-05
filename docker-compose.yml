@@ -1,0 +1,52 @@
+services:
+  langfuse:
+    image: langfuse/langfuse:2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@db:5432/langfuse
+      NEXTAUTH_SECRET: mysecretkey-change-in-production
+      SALT: mysalt-change-in-production
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: "true"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: ""
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    ports:
+      - "5432:5432"
+    volumes:
+      - langfuse_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  langfuse_pgdata:
