@@ -1,4 +1,4 @@
 .env
-/myenv
+/.myvenv
 /docs
 /faiss_index
