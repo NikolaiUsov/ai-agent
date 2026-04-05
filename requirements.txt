@@ -13,3 +13,22 @@ pypdf>=5.0.0
 pdfplumber>=0.11.0                           
 python-dotenv>=1.0.0
 ddgs
+
+# Langfuse SDK
+langfuse>=2.56.0,<3.0.0
+
+# LLM через OpenRouter (OpenAI-совместимый API)
+langchain-core>=1.2.10,<1.3.0
+langgraph>=1.0.8,<1.1.0
+langfuse-langchain
+
+
+# Notebook и визуализация
+#jupyter>=1.0.0
+#ipywidgets>=8.1.0
+#matplotlib>=3.9.0
+#pandas>=2.2.0
+#numpy>=2.0.0
+#seaborn>=0.13.0
+
+
