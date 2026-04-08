@@ -1,43 +1,55 @@
-## ИИ-агент
+## ИИ-агент(ReAct)
 
 ### Описание
 Интеллектуальный ассистент формирует ответы на основе данных локальной базы знаний, а при необходмости — подтягивает дополнительную информацию из Интернета.  
-Агент автономно выбирает инструмент для решения задачи
+Агент автономно выбирает инструмент для решения задачи, имеет PII-фильтрацию, блокирует подозрительные запросы (Injection-детекция), также настроена базовая оценка безопасности оветов агента. Все llm-вызовы трассируются в langfuse
 
 ### Использованные технологии
 - **Python**
 - **LLM**: OpenAI через LangChain 
 - **RAG / векторный поиск**: FAISS
-- **Framework**: LangChain (Core, Classic, Community, huggingface)
+- **Framework**: LangGraph, LangChain (Core, Classic, Community, huggingface)
 - **Embeddings**: HuggingFaceEmbeddings
 - **Search API**: DuckDuckGo
 - **Инструменты для повышения качества ответов**: CrossEncoderReranker, Query Expansion 
+- **Инструменты контроля и защиты**: Langfuse, LLMSecOps
 
 ### Структура
 
 *   `llm.py` — Основной файл ИИ-агента.
 *   `rag.py` — Скрипт для первичной обработки PDF и создания векторной базы.
 *   `requirements.txt` — Информация о версиях библиотек.
+*   `docker-compose.yml` — Локальный Langfuse.
+*   `filters.py` — Функции-эвалюаторы.
 *   *База знаний* — Папка для размещения данных базы знаний (PDF).
 *   *Векторная БД* — Локальное хранилище векторных представлений (создается автоматически)
 
-### Установка
+### Быстрый старт
 
+1. Поднять локальный Langfuse
 ```bash
+docker compose up -d
+```
+2. Настроить окружение
+```bash
+# Рекомендуемая версия Python: 3.10-3.12
 python -m venv .venv
-.\.venv\Scripts\activate
-pip install -U pip
+# Windows:
+.\.venv\Scripts\Activate.ps1
+# Linux/macOS:
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 Примечание: если установка из `requirements.txt` падает из-за несовместимых/опечатанных пакетов, установите зависимости вручную по импортам из файлов  `llm.py`, `rag.py`.
 
-### Запуск
-1) Убедитесь, что в корне проекта есть:
-- `.env` с `OPENROUTER_API_KEY`
-- `текстовая база знаний` 
+3. Настроить API-ключи
+- **OPENROUTER_API_KEY**: https://openrouter.ai/keys
+- **LANGFUSE_PUBLIC_KEY**: Локальный Langfuse → Settings → API Keys
+- **LANGFUSE_SECRET_KEY**: Локальный Langfuse → Settings → API Keys
 
-2) Создание векторной базы знаний (RAG)
+
+4. Создание векторной базы знаний (RAG)
 
 *Перед запуском бота необходимо индексировать базу знаний. Запустите скрипт и дождитесь его выполнения:*
 
@@ -45,7 +57,7 @@ pip install -r requirements.txt
 python rag.py
 ```
 
-3) Запуск ИИ-агента
+5. Запуск ИИ-агента
 
 *После того как база данных успешно создана, запустите агента:*
 
@@ -53,6 +65,15 @@ python rag.py
 python llm.py
 ```
 
+### Системные требования
+
+- Python 3.10-3.1
+- Docker и Docker Compose (для локального Langfuse)
+- 4-8 GB RAM
+- Доступ в интернет (для OpenRouter API, Hugging Face и веб-поиска)
+
+---
+---
 
 ### Примеры вопросов и ответов
 
