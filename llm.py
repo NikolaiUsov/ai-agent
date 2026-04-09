@@ -5,6 +5,7 @@ from langchain_classic.chains.combine_documents import create_stuff_documents_ch
 from langchain_classic.chains import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_classic.retrievers.document_compressors import DocumentCompressorPipeline
@@ -20,7 +21,8 @@ import os
 import re
 from pathlib import Path
 from dotenv import load_dotenv
-from filters import PIISanitizer, InjectionDetector
+from scr.filters import PIISanitizer, InjectionDetector
+from scr.history_store import HistoryMessage
 
 # ---------------------CONFIG---------------------
 BASE_DIR = Path(__file__).resolve().parent  
@@ -229,8 +231,8 @@ agent = create_agent(
 
 
 @observe()
-def safe_agent_call(user_input: str) -> str:
-    """Безопасный вызов агента с полной обвязкой LLMSecOps."""
+def safe_agent_call_with_history(user_input: str, history: list[HistoryMessage]| None=None) -> str:
+    """Безопасный вызов агента с учетом истории сообщений."""
 
     # 1. PII фильтрация входа
     sanitized_input = sanitizer.sanitize(user_input)
@@ -246,14 +248,14 @@ def safe_agent_call(user_input: str) -> str:
             "input_pii_detected": input_has_pii,
             "injection_risk": injection_result["risk_score"],
             "injection_suspicious": injection_result["is_suspicious"],
-        }
+        },
     )
 
     # 4. Скоры безопасности
     langfuse_context.score_current_trace(
         name="injection_risk",
         value=injection_result["risk_score"],
-        comment=f"Matched patterns: {injection_result['matched_patterns']}"
+        comment=f"Matched patterns: {injection_result['matched_patterns']}",
     )
     langfuse_context.score_current_trace(
         name="input_pii",
@@ -265,10 +267,18 @@ def safe_agent_call(user_input: str) -> str:
         langfuse_context.score_current_trace(name="blocked", value=True)
         return "⚠️ Запрос отклонён системой безопасности. Обнаружена попытка prompt injection."
 
-    # 6. Вызов агента
+    # 6. Вызов агента с историей
+    messages = []
+    for msg in history or []:
+        if msg.role == "human" and (msg.content or "").strip():
+            messages.append(HumanMessage(content=msg.content))
+        elif msg.role == "ai" and (msg.content or "").strip():
+            messages.append(AIMessage(content=msg.content))
+    messages.append(HumanMessage(content=sanitized_input))
+
     result = agent.invoke(
-        {"messages": [("human", sanitized_input)]},
-        config={"callbacks": [langfuse_handler]}
+        {"messages": messages},
+        config={"callbacks": [langfuse_handler]},
     )
     answer = result["messages"][-1].content
 
@@ -285,7 +295,7 @@ def safe_agent_call(user_input: str) -> str:
 
 
 if __name__ == "__main__":
-    result = safe_agent_call(query)
+    result = safe_agent_call_with_history(query)
     # Печатаем только финальный текст ответа, а не весь "сырой" объект.
     final_text = None
     if isinstance(result, dict) and "messages" in result:

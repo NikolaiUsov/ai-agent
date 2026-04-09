@@ -8,6 +8,8 @@ class PIISanitizer:
         "CARD": r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b',
         "PHONE_RU": r'\b\+?[78][\s-]?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}\b',
         "INN": r'\b\d{10,12}\b',  # ИНН (упрощённый)
+        "PASPORT_RU": r'\b\d{4} ?\d{6}\b',
+        "SNILS_RU": r'\b\d{3}[\s-]?\d{3}[\s-]?\d{3} ?\d{2}\b'
     }
 
     def sanitize(self, text: str) -> str:
@@ -28,17 +30,17 @@ class InjectionDetector:
     """Детектор prompt injection атак."""
 
     PATTERNS = [
-        (r"ignore\s+(previous|above|all)\s+(instructions?|rules?|prompts?)", 0.9),
-        (r"forget\s+(everything|all|previous)", 0.8),
-        (r"you\s+are\s+now\s+", 0.7),
-        (r"(system|admin)\s*:\s*(override|reset|ignore)", 0.9),
-        (r"SYSTEM\s*:", 0.8),
-        (r"reveal\s+(your|the)\s+(system\s+)?prompt", 0.9),
-        (r"what\s+(is|are)\s+your\s+(instructions?|rules?|prompt)", 0.7),
-        (r"(игнорируй|забудь|отмени)\s+(предыдущие|все|прежние)", 0.9),
-        (r"ты\s+теперь\s+", 0.7),
-        (r"выведи\s+(системный\s+)?промпт", 0.9),
-        (r"DAN|Do\s+Anything\s+Now", 0.8),
+        (r"(?i)ignore\s*(previous|above|all)\s*(instructions?|rules?|prompts?)", 0.9),
+        (r"(?i)forget\s*(everything|all|previous)", 0.8),
+        (r"(?i)you\s*are\s*now\s*", 0.7),
+        (r"(?i)(system|admin)\s*:\s*(override|reset|ignore)", 0.9),
+        (r"(?i)SYSTEM\s*:", 0.8),
+        (r"(?i)reveal\s*(your|the)\s*(system\s*)?prompt", 0.9),
+        (r"(?i)what\s*(is|are)\s*your\s*(instructions?|rules?|prompt)", 0.7),
+        (r"(?i)(игнорируй|забудь|отмени)\s*(предыдущие|все|прежние)", 0.9),
+        (r"(?i)ты\s*теперь\s*", 0.7),
+        (r"(?i)выведи\s*(системный\s*)?промпт", 0.9),
+        (r"(?i)DAN|Do\s*Anything\s*Now", 0.8),
     ]
 
     def detect(self, text: str) -> dict:

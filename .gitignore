@@ -2,3 +2,7 @@
 /.myvenv
 /docs
 /faiss_index
+/__pycache__
+scr/__pycache__
+/chat_history
+web/__pycache__

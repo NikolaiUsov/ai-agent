@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Консультант по ИИ-агентам</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: #f5f7fb;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        /* карточка чата */
+        .chat-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 90vh;
+            max-height: 800px;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        /* шапка */
+        .chat-header {
+            padding: 1.2rem 1.5rem;
+            background: white;
+            border-bottom: 1px solid #e9eef3;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }
+
+        .title h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #1e2b3c, #2c3e50);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+
+        .title p {
+            font-size: 0.8rem;
+            color: #5b6e8c;
+            margin-top: 0.2rem;
+        }
+
+        .session-info {
+            font-size: 0.75rem;
+            background: #f0f2f5;
+            padding: 0.3rem 0.8rem;
+            border-radius: 40px;
+            color: #2c3e50;
+            font-family: monospace;
+            word-break: break-all;
+            max-width: 220px;
+            text-align: right;
+        }
+
+        /* область сообщений */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: #fafcff;
+        }
+
+        /* общие стили сообщений */
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 85%;
+            animation: fadeInUp 0.2s ease-out;
+        }
+
+        .user-message {
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            align-self: flex-start;
+        }
+
+        .bubble {
+            padding: 0.8rem 1.2rem;
+            border-radius: 24px;
+            line-height: 1.45;
+            font-size: 0.95rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .user-message .bubble {
+            background: #1e2b3c;
+            color: white;
+            border-bottom-right-radius: 6px;
+        }
+
+        .bot-message .bubble {
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #1a2634;
+            border-bottom-left-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: #8a99b0;
+            margin-top: 0.3rem;
+            margin-left: 0.6rem;
+            margin-right: 0.6rem;
+        }
+
+        /* индикатор печати */
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            padding: 0.6rem 1.2rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            width: fit-content;
+            border-bottom-left-radius: 6px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #8ba0bc;
+            border-radius: 50%;
+            animation: blink 1.2s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes blink {
+            0%, 60%, 100% { transform: scale(1); opacity: 0.4; }
+            30% { transform: scale(1.2); opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* форма ввода */
+        .input-area {
+            background: white;
+            border-top: 1px solid #e9eef3;
+            padding: 1rem 1.5rem 1.2rem;
+            display: flex;
+            gap: 0.8rem;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: #f8fafd;
+            border-radius: 32px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            padding: 0.2rem 0.2rem 0.2rem 1rem;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #7c8ea0;
+            box-shadow: 0 0 0 3px rgba(44,62,80,0.1);
+            background: white;
+        }
+
+        textarea {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 0.8rem 0;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: none;
+            outline: none;
+            max-height: 120px;
+            color: #1e2b3c;
+        }
+
+        textarea::placeholder {
+            color: #9aaebf;
+        }
+
+        button {
+            background: #1e2b3c;
+            border: none;
+            color: white;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        button:disabled {
+            background: #b9c4d1;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-btn {
+            background: transparent;
+            color: #7e5c5c;
+            border: 1px solid #e2e8f0;
+            background: #fef2f0;
+            color: #b1624b;
+        }
+
+        .clear-btn:active {
+            background: #f3e2de;
+        }
+
+        .error-bubble {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #ffc9c9;
+        }
+
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 0.6rem;
+            background: #fafcff;
+            color: #8ba0bc;
+            border-top: 1px solid #eef2f8;
+        }
+
+        @media (max-width: 600px) {
+            .chat-container {
+                height: 95vh;
+                border-radius: 20px;
+            }
+            .message {
+                max-width: 95%;
+            }
+            .session-info {
+                max-width: 160px;
+                font-size: 0.65rem;
+            }
+            .title h1 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="title">
+            <h1>AI Consultant</h1>
+            <p>Эксперт по ИИ-агентам</p>
+        </div>
+        <div class="session-info" id="sessionIdDisplay"></div>
+    </div>
+
+    <div class="messages-area" id="messagesContainer">
+        <div class="message bot-message">
+            <div class="bubble">
+                👋 Привет! Я консультант по архитектуре, паттернам и практикам ИИ-агентов.<br>
+                Использую базу знаний + Интернет. Что вас интересует?
+            </div>
+            <div class="message-time">только что</div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-wrapper">
+            <textarea 
+                id="messageInput" 
+                placeholder="Задайте свой вопрос о ReAct, памяти агентов, multi-agent системах..." 
+                rows="1"
+            ></textarea>
+        </div>
+        <button id="sendBtn">➤ Отправить</button>
+        <button id="clearBtn" class="clear-btn" title="Очистить историю диалога">🗑 Очистить</button>
+    </div>
+    <footer>⚡ Конфиденциально | Сессия сохраняется локально</footer>
+</div>
+
+<script>
+    // -------- Управление сессией --------
+    const STORAGE_KEY = 'ai_agent_session_id';
+    let sessionId = localStorage.getItem(STORAGE_KEY);
+    if (!sessionId) {
+        // простой генератор ID (timestamp + случайные символы)
+        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem(STORAGE_KEY, sessionId);
+    }
+    document.getElementById('sessionIdDisplay').innerText = 'ID: ' + sessionId.slice(0, 14) + '…';
+
+    // -------- DOM элементы --------
+    const messagesContainer = document.getElementById('messagesContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // Состояние загрузки (блокировка повторных отправок)
+    let isLoading = false;
+
+    // -------- Вспомогательные функции UI --------
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function formatTime() {
+        const now = new Date();
+        return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Добавление сообщения в чат
+    function appendMessage(role, content, isError = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role === 'user' ? 'user-message' : 'bot-message'}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        if (isError) bubble.classList.add('error-bubble');
+        bubble.innerText = content;
+        
+        const timeSpan = document.createElement('div');
+        timeSpan.className = 'message-time';
+        timeSpan.innerText = formatTime();
+        
+        messageDiv.appendChild(bubble);
+        messageDiv.appendChild(timeSpan);
+        messagesContainer.appendChild(messageDiv);
+        scrollToBottom();
+        return messageDiv;
+    }
+
+    // Индикатор "печатает..."
+    let typingDiv = null;
+    function showTyping() {
+        if (typingDiv) removeTyping();
+        typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot-message';
+        typingDiv.innerHTML = `
+            <div class="typing-indicator">
+                <span></span><span></span><span></span>
+                <span style="margin-left: 18px; font-size:0.8rem;">Думаю...</span>
+            </div>
+        `;
+        messagesContainer.appendChild(typingDiv);
+        scrollToBottom();
+    }
+
+    function removeTyping() {
+        if (typingDiv && typingDiv.parentNode) {
+            typingDiv.remove();
+            typingDiv = null;
+        }
+    }
+
+    // Очистка истории (локально + сервер)
+    async function clearChatHistory() {
+        if (isLoading) return;
+        try {
+            const response = await fetch('/api/clear', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            if (!response.ok) {
+                console.warn('clear не удался, но очистим локально');
+            }
+        } catch (err) {
+            console.error('clear error:', err);
+        }
+        // Удаляем все сообщения из DOM, кроме приветственного (но оставим системное?)
+        while (messagesContainer.firstChild) {
+            messagesContainer.removeChild(messagesContainer.firstChild);
+        }
+        // Добавляем приветственное сообщение заново
+        const welcomeDiv = document.createElement('div');
+        welcomeDiv.className = 'message bot-message';
+        welcomeDiv.innerHTML = `<div class="bubble">🤖 История очищена. Чем могу помочь?</div><div class="message-time">${formatTime()}</div>`;
+        messagesContainer.appendChild(welcomeDiv);
+        scrollToBottom();
+    }
+
+    // Отправка сообщения
+    async function sendMessage() {
+        if (isLoading) return;
+        const rawMessage = messageInput.value.trim();
+        if (rawMessage === "") return;
+
+        // Очищаем поле ввода и сбрасываем высоту
+        messageInput.value = "";
+        messageInput.style.height = 'auto';
+        
+        // Добавляем сообщение пользователя в чат
+        appendMessage('user', rawMessage);
+        
+        isLoading = true;
+        sendBtn.disabled = true;
+        clearBtn.disabled = true;
+        showTyping();
+        
+        try {
+            const payload = {
+                message: rawMessage,
+                session_id: sessionId
+            };
+            
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            removeTyping();
+            
+            if (!response.ok) {
+                let errorDetail = `Ошибка сервера (${response.status})`;
+                try {
+                    const errData = await response.json();
+                    errorDetail = errData.detail || errorDetail;
+                } catch(e) {}
+                appendMessage('bot', `❌ ${errorDetail}. Попробуйте позже.`, true);
+                isLoading = false;
+                sendBtn.disabled = false;
+                clearBtn.disabled = false;
+                scrollToBottom();
+                return;
+            }
+            
+            const data = await response.json();
+            const reply = data.reply || "⚠️ Пустой ответ от агента";
+            appendMessage('bot', reply);
+            
+        } catch (err) {
+            removeTyping();
+            console.error('fetch error:', err);
+            appendMessage('bot', `🌐 Сетевая ошибка: ${err.message}. Убедитесь, что сервер запущен (python -m uvicorn web.api:app --reload)`, true);
+        } finally {
+            isLoading = false;
+            sendBtn.disabled = false;
+            clearBtn.disabled = false;
+            scrollToBottom();
+            messageInput.focus();
+        }
+    }
+
+    // Авто-расширение textarea
+    function autoResizeTextarea() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    }
+
+    // Обработчики событий
+    sendBtn.addEventListener('click', sendMessage);
+    clearBtn.addEventListener('click', () => {
+        if (isLoading) return;
+        if (confirm('Очистить всю историю диалога? Локальная история будет удалена.')) {
+            clearChatHistory();
+        }
+    });
+    
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    messageInput.addEventListener('input', autoResizeTextarea);
+    
+    // фокус при загрузке
+    messageInput.focus();
+    
+    // Доп. проверка здоровья сервера при старте (опционально, только в консоль)
+    async function checkHealth() {
+        try {
+            const res = await fetch('/api/health');
+            if (res.ok) console.log('✅ Сервер доступен');
+            else console.warn('⚠️ Сервер ответил с ошибкой health');
+        } catch(e) {
+            console.warn('⚠️ Сервер не отвечает. Запустите api.py (uvicorn)');
+        }
+    }
+    checkHealth();
+</script>
+</body>
+</html>
