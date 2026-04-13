@@ -126,6 +126,61 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         }
 
+        /* === ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ДЛЯ MARKDOWN === */
+        .bot-message .bubble {
+            line-height: 1.5;
+        }
+
+        .bot-message .bubble code {
+            background: #f0f2f5;
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85em;
+        }
+
+        .bot-message .bubble pre {
+            background: #f0f2f5;
+            padding: 0.75rem;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+
+        .bot-message .bubble pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .bot-message .bubble ul,
+        .bot-message .bubble ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .bot-message .bubble li {
+            margin: 0.2rem 0;
+        }
+
+        .bot-message .bubble a {
+            color: #1e2b3c;
+            text-decoration: underline;
+        }
+
+        .bot-message .bubble blockquote {
+            border-left: 3px solid #8ba0bc;
+            margin: 0.5rem 0;
+            padding-left: 1rem;
+            color: #4a5b7a;
+        }
+
+        .bot-message .bubble h1,
+        .bot-message .bubble h2,
+        .bot-message .bubble h3 {
+            margin: 0.5rem 0 0.25rem;
+            font-weight: 600;
+        }
+
         .message-time {
             font-size: 0.7rem;
             color: #8a99b0;
@@ -288,6 +343,9 @@
             }
         }
     </style>
+    <!-- 1. Подключаем библиотеки для Markdown и безопасности -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
 </head>
 <body>
 
@@ -329,7 +387,6 @@
     const STORAGE_KEY = 'ai_agent_session_id';
     let sessionId = localStorage.getItem(STORAGE_KEY);
     if (!sessionId) {
-        // простой генератор ID (timestamp + случайные символы)
         sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
         localStorage.setItem(STORAGE_KEY, sessionId);
     }
@@ -341,10 +398,8 @@
     const sendBtn = document.getElementById('sendBtn');
     const clearBtn = document.getElementById('clearBtn');
 
-    // Состояние загрузки (блокировка повторных отправок)
     let isLoading = false;
 
-    // -------- Вспомогательные функции UI --------
     function scrollToBottom() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -354,7 +409,7 @@
         return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    // Добавление сообщения в чат
+    // 2. ОБНОВЛЁННАЯ ФУНКЦИЯ appendMessage С ПОДДЕРЖКОЙ MARKDOWN ДЛЯ БОТА
     function appendMessage(role, content, isError = false) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role === 'user' ? 'user-message' : 'bot-message'}`;
@@ -362,7 +417,16 @@
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
         if (isError) bubble.classList.add('error-bubble');
-        bubble.innerText = content;
+        
+        if (role === 'bot' && !isError) {
+            // Преобразуем Markdown в HTML и очищаем
+            const rawHtml = marked.parse(content);
+            const cleanHtml = DOMPurify.sanitize(rawHtml);
+            bubble.innerHTML = cleanHtml;
+        } else {
+            // Для сообщений пользователя или ошибок оставляем как есть
+            bubble.innerText = content;
+        }
         
         const timeSpan = document.createElement('div');
         timeSpan.className = 'message-time';
@@ -398,7 +462,7 @@
         }
     }
 
-    // Очистка истории (локально + сервер)
+    // Очистка истории
     async function clearChatHistory() {
         if (isLoading) return;
         try {
@@ -413,11 +477,9 @@
         } catch (err) {
             console.error('clear error:', err);
         }
-        // Удаляем все сообщения из DOM, кроме приветственного (но оставим системное?)
         while (messagesContainer.firstChild) {
             messagesContainer.removeChild(messagesContainer.firstChild);
         }
-        // Добавляем приветственное сообщение заново
         const welcomeDiv = document.createElement('div');
         welcomeDiv.className = 'message bot-message';
         welcomeDiv.innerHTML = `<div class="bubble">🤖 История очищена. Чем могу помочь?</div><div class="message-time">${formatTime()}</div>`;
@@ -431,11 +493,9 @@
         const rawMessage = messageInput.value.trim();
         if (rawMessage === "") return;
 
-        // Очищаем поле ввода и сбрасываем высоту
         messageInput.value = "";
         messageInput.style.height = 'auto';
         
-        // Добавляем сообщение пользователя в чат
         appendMessage('user', rawMessage);
         
         isLoading = true;
@@ -488,13 +548,11 @@
         }
     }
 
-    // Авто-расширение textarea
     function autoResizeTextarea() {
         messageInput.style.height = 'auto';
         messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
     }
 
-    // Обработчики событий
     sendBtn.addEventListener('click', sendMessage);
     clearBtn.addEventListener('click', () => {
         if (isLoading) return;
@@ -511,11 +569,8 @@
     });
     
     messageInput.addEventListener('input', autoResizeTextarea);
-    
-    // фокус при загрузке
     messageInput.focus();
     
-    // Доп. проверка здоровья сервера при старте (опционально, только в консоль)
     async function checkHealth() {
         try {
             const res = await fetch('/api/health');

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable, List, Literal, Tuple
 
 
-Role = Literal["human", "ai"]
+Role = Literal["user", "assistant"]
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS messages (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT    NOT NULL,
-            role       TEXT    NOT NULL CHECK (role IN ('human', 'ai')),
+            role       TEXT    NOT NULL CHECK (role IN ('user', 'assistant')),
             content    TEXT    NOT NULL,
             created_at INTEGER NOT NULL
         );
@@ -52,7 +52,7 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     )
 
 
-def append_turn(*, session_id: str, user_text: str, ai_text: str, keep_last_pairs: int = 10) -> None:
+def append_turn(*, session_id: str, user_text: str, assistant_text: str, keep_last_pairs: int = 10) -> None:
     """
     Добавляет один "ход" диалога: сообщение пользователя + ответ ассистента.
     Автоматически подрезает историю до последних `keep_last_pairs` пар (2*N сообщений).
@@ -65,12 +65,12 @@ def append_turn(*, session_id: str, user_text: str, ai_text: str, keep_last_pair
     with _connect() as conn:
         _ensure_schema(conn)
         conn.execute(
-            "INSERT INTO messages(session_id, role, content, created_at) VALUES (?, 'human', ?, ?)",
+            "INSERT INTO messages(session_id, role, content, created_at) VALUES (?, 'user', ?, ?)",
             (session_id, user_text, now),
         )
         conn.execute(
-            "INSERT INTO messages(session_id, role, content, created_at) VALUES (?, 'ai', ?, ?)",
-            (session_id, ai_text, now),
+            "INSERT INTO messages(session_id, role, content, created_at) VALUES (?, 'assistant', ?, ?)",
+            (session_id, assistant_text, now),
         )
         if keep_last_messages > 0:
             # Оставляем только последние 2*N сообщений (по времени/ид).

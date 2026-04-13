@@ -27,7 +27,7 @@ from scr.history_store import HistoryMessage
 # ---------------------CONFIG---------------------
 BASE_DIR = Path(__file__).resolve().parent  
 faiss_index_path = str(BASE_DIR / "faiss_index")
-SELECTED_MODEL = "openrouter/free"               # openai/gpt-4o-mini   openrouter/free
+SELECTED_MODEL = "openai/gpt-oss-20b:free"               # openai/gpt-4o-mini   openrouter/free
 openai_api_base="https://openrouter.ai/api/v1"   
 temperature=0.5
 max_tokens=1024
@@ -270,9 +270,9 @@ def safe_agent_call_with_history(user_input: str, history: list[HistoryMessage]|
     # 6. Вызов агента с историей
     messages = []
     for msg in history or []:
-        if msg.role == "human" and (msg.content or "").strip():
+        if msg.role == "user" and (msg.content or "").strip():
             messages.append(HumanMessage(content=msg.content))
-        elif msg.role == "ai" and (msg.content or "").strip():
+        elif msg.role == "assistant" and (msg.content or "").strip():
             messages.append(AIMessage(content=msg.content))
     messages.append(HumanMessage(content=sanitized_input))
 

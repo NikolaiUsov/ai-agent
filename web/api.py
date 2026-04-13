@@ -82,7 +82,7 @@ def chat(req: ChatRequest):
 
         history = load_messages(session_id=req.session_id, limit_pairs=10)
         reply = safe_agent_call_with_history(req.message, history)
-        append_turn(session_id=req.session_id, user_text=req.message, ai_text=reply, keep_last_pairs=10)
+        append_turn(session_id=req.session_id, user_text=req.message, assistant_text=reply, keep_last_pairs=10)
     except Exception as exc:
         logger.exception("run_agent failed")
         raise HTTPException(status_code=500, detail="Ошибка обработки запроса") from exc
