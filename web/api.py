@@ -84,9 +84,31 @@ def chat(req: ChatRequest):
         reply = safe_agent_call_with_history(req.message, history)
         append_turn(session_id=req.session_id, user_text=req.message, assistant_text=reply, keep_last_pairs=10)
     except Exception as exc:
-        logger.exception("run_agent failed")
+        logger.exception("agent failed")
         raise HTTPException(status_code=500, detail="Ошибка обработки запроса") from exc
     return ChatResponse(reply=reply, session_id=req.session_id)
+
+
+@app.get("/api/history")
+def get_history(session_id: str, limit_pairs: int = 50):
+    """
+    Возвращает историю диалога для указанной сессии.
+    - session_id: ID сессии (обязательный query-параметр)
+    - limit_pairs: количество последних пар сообщений (по умолчанию 50)
+    """
+    session_id = (session_id or "").strip()
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+    messages = load_messages(session_id=session_id, limit_pairs=limit_pairs)
+    # Преобразуем список HistoryMessage в список словарей
+    return [
+        {
+            "role": msg.role,
+            "content": msg.content,
+            "created_at": msg.created_at
+        }
+        for msg in messages
+    ]
 
 
 @app.post("/api/clear")
